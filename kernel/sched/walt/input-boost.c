@@ -18,6 +18,10 @@
 
 #include "walt.h"
 
+#ifdef CONFIG_KPROFILES
+extern int kp_active_mode(void);
+#endif
+
 #define input_boost_attr_rw(_name)		\
 static struct kobj_attribute _name##_attr =	\
 __ATTR(_name, 0644, show_##_name, store_##_name)
@@ -130,6 +134,22 @@ static void do_input_boost(struct work_struct *work)
 {
 	unsigned int cpu, ret;
 	struct cpu_sync *i_sync_info;
+	unsigned int boost_ms = sysctl_input_boost_ms;
+	bool allow_sched_boost = true;
+
+	#ifdef CONFIG_KPROFILES
+	switch (kp_active_mode()) {
+	case 2:		/* balanced: shorter boost, no sched boost */
+		boost_ms = boost_ms / 2;
+		allow_sched_boost = false;
+		break;
+	case 3:		/* performance: longer boost */
+		boost_ms = boost_ms * 3 / 2;
+		break;
+	default:	/* 0 = stock behaviour */
+		break;
+		}
+	#endif
 
 	cancel_delayed_work_sync(&input_boost_rem);
 	if (sched_boost_active) {
@@ -148,7 +168,7 @@ static void do_input_boost(struct work_struct *work)
 	update_policy_online();
 
 	/* Enable scheduler boost to migrate tasks to big cluster */
-	if (sysctl_sched_boost_on_input > 0) {
+	if (allow_sched_boost && sysctl_sched_boost_on_input > 0) {
 		ret = sched_set_boost(sysctl_sched_boost_on_input);
 		if (ret)
 			pr_err("input-boost: sched boost enable failed\n");
@@ -157,7 +177,7 @@ static void do_input_boost(struct work_struct *work)
 	}
 
 	queue_delayed_work(input_boost_wq, &input_boost_rem,
-					msecs_to_jiffies(sysctl_input_boost_ms));
+					msecs_to_jiffies(boost_ms));
 }
 
 static void inputboost_input_event(struct input_handle *handle,
@@ -175,6 +195,12 @@ static void inputboost_input_event(struct input_handle *handle,
 	}
 	if (!enabled)
 		return;
+
+	#ifdef CONFIG_KPROFILES
+	/* battery profile: no input boost */
+	if (kp_active_mode() == 1)
+		return;
+	#endif
 
 	now = ktime_to_us(ktime_get());
 	if (now - last_input_time < MIN_INPUT_INTERVAL)
