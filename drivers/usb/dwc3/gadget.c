@@ -2574,7 +2574,7 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 
 static void dwc3_gadget_disable_irq(struct dwc3 *dwc);
 static void __dwc3_gadget_stop(struct dwc3 *dwc);
-static int __dwc3_gadget_start(struct dwc3 *dwc);
+static noinline int __dwc3_gadget_start(struct dwc3 *dwc);
 
 static int dwc3_gadget_soft_disconnect(struct dwc3 *dwc)
 {
@@ -2785,7 +2785,7 @@ static void dwc3_gadget_setup_nump(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 }
 
-static int __dwc3_gadget_start(struct dwc3 *dwc)
+static noinline int __dwc3_gadget_start(struct dwc3 *dwc)
 {
 	struct dwc3_ep		*dep;
 	int			ret = 0;
@@ -3081,7 +3081,7 @@ static int dwc3_gadget_init_control_endpoint(struct dwc3_ep *dep)
 	return 0;
 }
 
-static int dwc3_gadget_init_in_endpoint(struct dwc3_ep *dep)
+static noinline int dwc3_gadget_init_in_endpoint(struct dwc3_ep *dep)
 {
 	struct dwc3 *dwc = dep->dwc;
 	u32 mdwidth;
@@ -3130,7 +3130,7 @@ static int dwc3_gadget_init_in_endpoint(struct dwc3_ep *dep)
 	return dwc3_alloc_trb_pool(dep);
 }
 
-static int dwc3_gadget_init_out_endpoint(struct dwc3_ep *dep)
+static noinline int dwc3_gadget_init_out_endpoint(struct dwc3_ep *dep)
 {
 	struct dwc3 *dwc = dep->dwc;
 	u32 mdwidth;
@@ -4031,7 +4031,7 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 }
 
-static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
+static noinline void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 {
 	struct dwc3_ep		*dep;
 	int			ret;
